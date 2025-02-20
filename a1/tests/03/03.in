@@ -1,0 +1,4 @@
+add_task task1 10
+add_employee bob
+assign_employee task1 bob
+report employee bob
