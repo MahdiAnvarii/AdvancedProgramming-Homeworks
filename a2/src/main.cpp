@@ -17,7 +17,9 @@ struct TableInfo{
     int tableCapacity;
     string tableType;
     list<string> peopleAtTable;
+    list<int> peopleAtTableID;
     list<string> peopleWaiting;
+    list<int> peopleWaitingID;
 };
 
 struct StudentInfo{
@@ -81,6 +83,8 @@ map<int,TableInfo> processTablesFile(string tablesFileName){
                 tableInfo.tableType = tableInfoVector[4];
                 tableInfo.peopleAtTable = {};
                 tableInfo.peopleWaiting = {};
+                tableInfo.peopleAtTableID = {};
+                tableInfo.peopleWaitingID = {};
             }
         }
         tablesInformationMap[tableID] = tableInfo;
@@ -179,7 +183,7 @@ int enterTheStudent(int studentID, map<int,StudentInfo> studentsInformationMap, 
     return tablePriorityVec[0].first;
 }
 
-void reserveTableKnownTable(map<int,StudentInfo> &studentsInformationMap, map<int,TableInfo> &tablesInformationMap, int studentID, int tableID = 0){
+void reserveTable(map<int,StudentInfo> &studentsInformationMap, map<int,TableInfo> &tablesInformationMap, int studentID, int tableID = 0, bool needDescription = true){
     if (!tableID){
         tableID = enterTheStudent(studentID , studentsInformationMap, tablesInformationMap, false);
     }
@@ -187,13 +191,60 @@ void reserveTableKnownTable(map<int,StudentInfo> &studentsInformationMap, map<in
     if (tablesInformationMap[tableID].tableCapacity > 0){
         tablesInformationMap[tableID].tableCapacity--;
         tablesInformationMap[tableID].peopleAtTable.push_back(studentsInformationMap[studentID].studentName);
+        tablesInformationMap[tableID].peopleAtTableID.push_back(studentID);
         studentsInformationMap[studentID].isWaiting = false;
-        cout << studentsInformationMap[studentID].studentName << " sits at table " << tableID << endl;
+        if (needDescription){
+            cout << studentsInformationMap[studentID].studentName << " sits at table " << tableID << endl;
+        }
     } else{
         tablesInformationMap[tableID].peopleWaiting.push_back(studentsInformationMap[studentID].studentName);
+        tablesInformationMap[tableID].peopleWaitingID.push_back(studentID);
         studentsInformationMap[studentID].isWaiting = true;
         cout << studentsInformationMap[studentID].studentName << " enters the waiting queue of table " << tableID << endl;
     }
+}
+
+void exitTheStudent(int studentID, map<int,StudentInfo> &studentsInformationMap, map<int,TableInfo> &tablesInformationMap){
+    if (studentsInformationMap[studentID].assignedTable > 0){
+        int tableID = studentsInformationMap[studentID].assignedTable;
+        if (studentsInformationMap[studentID].isWaiting){
+            tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[studentID].studentName);
+            tablesInformationMap[tableID].peopleWaitingID.remove(studentID);
+        } else{
+            tablesInformationMap[tableID].peopleAtTable.remove(studentsInformationMap[studentID].studentName);
+            tablesInformationMap[tableID].peopleAtTableID.remove(studentID);
+            tablesInformationMap[tableID].tableCapacity++;
+            string friendName = studentsInformationMap[studentsInformationMap[studentID].friendID].studentName;
+            if (find(tablesInformationMap[tableID].peopleWaiting.begin(), tablesInformationMap[tableID].peopleWaiting.end(), friendName) != tablesInformationMap[tableID].peopleWaiting.end()) {
+                tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[studentsInformationMap[studentID].friendID].studentName);
+                tablesInformationMap[tableID].peopleWaitingID.remove(studentsInformationMap[studentID].friendID);       
+                reserveTable(studentsInformationMap, tablesInformationMap, studentsInformationMap[studentID].friendID, tableID, false);
+            } else{
+                tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[tablesInformationMap[tableID].peopleWaitingID.front()].studentName);
+                tablesInformationMap[tableID].peopleWaitingID.remove(tablesInformationMap[tableID].peopleWaitingID.front());       
+                reserveTable(studentsInformationMap, tablesInformationMap, tablesInformationMap[tableID].peopleWaitingID.front(), tableID, false);
+            }
+        }
+        studentsInformationMap[studentID].assignedTable = 0;
+        studentsInformationMap[studentID].isWaiting = false;
+    }
+    cout << studentsInformationMap[studentID].studentName << " exits!" << endl;
+}
+
+void switchTheStudents(int studentID, map<int,StudentInfo> &studentsInformationMap, map<int,TableInfo> &tablesInformationMap){
+    int theStudentTable = studentsInformationMap[studentID].assignedTable;
+    int theFriendTable = studentsInformationMap[studentsInformationMap[studentID].friendID].assignedTable;
+    tablesInformationMap[theStudentTable].peopleAtTable.remove(studentsInformationMap[studentID].studentName);
+    tablesInformationMap[theStudentTable].peopleAtTableID.remove(studentID);
+    tablesInformationMap[theStudentTable].peopleAtTable.push_back(studentsInformationMap[studentsInformationMap[studentID].friendID].studentName);
+    tablesInformationMap[theStudentTable].peopleAtTableID.push_back(studentsInformationMap[studentID].friendID);
+    tablesInformationMap[theFriendTable].peopleAtTable.remove(studentsInformationMap[studentsInformationMap[studentID].friendID].studentName);
+    tablesInformationMap[theFriendTable].peopleAtTableID.remove(studentsInformationMap[studentID].friendID);
+    tablesInformationMap[theFriendTable].peopleAtTable.push_back(studentsInformationMap[studentID].studentName);
+    tablesInformationMap[theFriendTable].peopleAtTableID.push_back(studentID);
+    studentsInformationMap[studentID].assignedTable = theFriendTable;
+    studentsInformationMap[studentsInformationMap[studentID].friendID].assignedTable = theStudentTable;
+    cout << studentsInformationMap[studentID].studentName << " switches seats with " << studentsInformationMap[studentsInformationMap[studentID].friendID].studentName << "!" << endl;
 }
 
 int main(int argc, char* argv[]){
@@ -213,10 +264,18 @@ int main(int argc, char* argv[]){
 
         if (ordersVector[0] == "reserve_table"){
             if (ordersVector.size() >= 3) {
-                reserveTableKnownTable(studentsInformationMap, tablesInformationMap, stoi(ordersVector[1]), stoi(ordersVector[2]));
+                reserveTable(studentsInformationMap, tablesInformationMap, stoi(ordersVector[1]), stoi(ordersVector[2]));
             } else {
-                reserveTableKnownTable(studentsInformationMap, tablesInformationMap, stoi(ordersVector[1]));
+                reserveTable(studentsInformationMap, tablesInformationMap, stoi(ordersVector[1]));
             }
+        }
+
+        if (ordersVector[0] == "exit"){
+            exitTheStudent(stoi(ordersVector[1]), studentsInformationMap, tablesInformationMap);
+        }
+
+        if (ordersVector[0] == "switch"){
+            switchTheStudents(stoi(ordersVector[1]), studentsInformationMap, tablesInformationMap);
         }
     }
     return 0;
