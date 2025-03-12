@@ -214,15 +214,18 @@ void exitTheStudent(int studentID, map<int,StudentInfo> &studentsInformationMap,
             tablesInformationMap[tableID].peopleAtTable.remove(studentsInformationMap[studentID].studentName);
             tablesInformationMap[tableID].peopleAtTableID.remove(studentID);
             tablesInformationMap[tableID].tableCapacity++;
-            string friendName = studentsInformationMap[studentsInformationMap[studentID].friendID].studentName;
-            if (find(tablesInformationMap[tableID].peopleWaiting.begin(), tablesInformationMap[tableID].peopleWaiting.end(), friendName) != tablesInformationMap[tableID].peopleWaiting.end()) {
-                tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[studentsInformationMap[studentID].friendID].studentName);
-                tablesInformationMap[tableID].peopleWaitingID.remove(studentsInformationMap[studentID].friendID);       
-                reserveTable(studentsInformationMap, tablesInformationMap, studentsInformationMap[studentID].friendID, tableID, false);
-            } else{
-                tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[tablesInformationMap[tableID].peopleWaitingID.front()].studentName);
-                tablesInformationMap[tableID].peopleWaitingID.remove(tablesInformationMap[tableID].peopleWaitingID.front());       
-                reserveTable(studentsInformationMap, tablesInformationMap, tablesInformationMap[tableID].peopleWaitingID.front(), tableID, false);
+            if (tablesInformationMap[tableID].peopleWaiting.size() > 0){
+                string friendName = studentsInformationMap[studentsInformationMap[studentID].friendID].studentName;
+                if (find(tablesInformationMap[tableID].peopleWaiting.begin(), tablesInformationMap[tableID].peopleWaiting.end(), friendName) != tablesInformationMap[tableID].peopleWaiting.end()) {
+                    tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[studentsInformationMap[studentID].friendID].studentName);
+                    tablesInformationMap[tableID].peopleWaitingID.remove(studentsInformationMap[studentID].friendID);       
+                    reserveTable(studentsInformationMap, tablesInformationMap, studentsInformationMap[studentID].friendID, tableID, false);
+                } else{
+                    int theFirstWaitingID = tablesInformationMap[tableID].peopleWaitingID.front();
+                    tablesInformationMap[tableID].peopleWaiting.remove(studentsInformationMap[tablesInformationMap[tableID].peopleWaitingID.front()].studentName);
+                    tablesInformationMap[tableID].peopleWaitingID.remove(tablesInformationMap[tableID].peopleWaitingID.front());       
+                    reserveTable(studentsInformationMap, tablesInformationMap, theFirstWaitingID, tableID, false);
+                }
             }
         }
         studentsInformationMap[studentID].assignedTable = 0;
