@@ -15,7 +15,7 @@ vector<int> splitTheLine(string line){
     return numbers;
 }
 
-string joinTheLine(vector<int> numbers){
+string joinTheLine(const vector<int>& numbers){
     string line;
     for (int n : numbers) {
         line = line + to_string(n) + " ";
@@ -23,7 +23,7 @@ string joinTheLine(vector<int> numbers){
     return line;
 }
 
-int checkEachSid(vector<int> sideAges, int theAge, bool isAfter){
+int checkEachSide(const vector<int>& sideAges, int theAge, bool isAfter){
     int maxValidAge = 0;
     if (!sideAges.empty()){
         auto sideMaxIt = max_element(sideAges.begin(), sideAges.end());
@@ -48,7 +48,7 @@ int checkEachSid(vector<int> sideAges, int theAge, bool isAfter){
     return maxValidAge;
 }
 
-vector<int> eideeCalculator(int n, vector<int> ages, vector<int> eideesValues, vector<int> currentEidees){
+vector<int> eideeCalculator(int n, vector<int>& ages, vector<int>& eideesValues, vector<int>& currentEidees){
     auto maxIt = max_element(ages.begin(), ages.end());
     int maxAge = *maxIt;
     int maxIndex = distance(ages.begin(), maxIt);
@@ -60,8 +60,8 @@ vector<int> eideeCalculator(int n, vector<int> ages, vector<int> eideesValues, v
         vector<int> agesBefore(ages.begin(), ages.begin() + maxIndex);
         vector<int> eideesValuesAfter(eideesValues.begin() + maxIndex+1, eideesValues.end());
         vector<int> eideesValuesBefore(eideesValues.begin(), eideesValues.begin() + maxIndex);
-        int maxAgeAfter = checkEachSid(agesAfter, maxAge, true);
-        int maxAgeBefore = checkEachSid(agesBefore, maxAge, false);
+        int maxAgeAfter = checkEachSide(agesAfter, maxAge, true);
+        int maxAgeBefore = checkEachSide(agesBefore, maxAge, false);
         auto maxItAfter = agesAfter.end();
         auto maxItBefore = agesBefore.end();
 
