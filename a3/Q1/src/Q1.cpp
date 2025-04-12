@@ -1,24 +1,24 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <cmath>
 
 using namespace std;
 
-vector<int> numberGeneration(int n){
+const int MAX_INDEX_DIGITS = 10;
+
+vector<int> generateNumbers(int n){
     vector<int> theNumbers;
-    for (int i=pow(2,n-1) ; i<pow(2,n) ; i++){
+    for (int i= 1 << (n - 1) ; i< 1 << n ; i++){
         theNumbers.push_back(i);
     }
     return theNumbers;
 }
 
-vector<int> replacementIndices(string currentString){
+vector<int> findReplacementIndices(string currentString){
     vector<int> theIndices;
-    int maxDigitNumbers=10;
     for (int i=0; i<currentString.size(); i++){
         if ((currentString[i]=='{') && (currentString[i+2]!='+')){
-            for (int j=i+1; j<=i+maxDigitNumbers; j++){
+            for (int j=i+1; j<=i+MAX_INDEX_DIGITS; j++){
                 if (currentString[j]=='}'){
                     theIndices.push_back(j);
                     break;
@@ -34,14 +34,14 @@ string createFraction(vector<int> theNumbers, int i){
     return theFraction;
 }
 
-string latexFraction(int n){
+string generateLatex(int n){
     if (n==1) return "1";
     else if (n==2) return "1+\\frac{2}{3}";
     
-    string currentString = latexFraction(n-1);
+    string currentString = generateLatex(n-1);
     string nextString;
-    vector<int> theIndices = replacementIndices(currentString);
-    vector<int> theNumbers = numberGeneration(n);
+    vector<int> theIndices = findReplacementIndices(currentString);
+    vector<int> theNumbers = generateNumbers(n);
 
     int previousIndex=0;
     int theIndex=theIndices[0];
@@ -57,6 +57,6 @@ string latexFraction(int n){
 int main() {
     int n;
     cin >> n;
-    cout << latexFraction(n) << endl;
+    cout << generateLatex(n) << endl;
     return 0;
 }
