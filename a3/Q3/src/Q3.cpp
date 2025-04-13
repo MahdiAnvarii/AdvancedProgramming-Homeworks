@@ -7,9 +7,11 @@
 
 using namespace std;
 
+double CONSIDER_TAX_PERCENTAGE=1.1;
+
 struct FoodMenuStruct{
-    vector<int> foodPrices;
-    vector<string> foodNames;
+    double foodPrices;
+    string foodNames;
 };
 
 vector<int> splitTheLine(string line){
@@ -22,9 +24,8 @@ vector<int> splitTheLine(string line){
     return numbers;
 }
 
-FoodMenuStruct processTheMenu(int n){
-    FoodMenuStruct foodMenu;
-    double considerTaxPercentage=1.1;
+vector<FoodMenuStruct> processTheMenu(int n){
+    vector<FoodMenuStruct> foodMenu;
     for (int i=0; i<n; i++){
         string food;
         string name;
@@ -32,35 +33,33 @@ FoodMenuStruct processTheMenu(int n){
         getline(cin,food);
         istringstream iss(food);
         iss >> name >> price;
-        foodMenu.foodNames.push_back(name);
-        foodMenu.foodPrices.push_back(price*considerTaxPercentage);
+        foodMenu.push_back({price*CONSIDER_TAX_PERCENTAGE, name});
     }
     return foodMenu;
 }
 
-void findThesubset(int minimumFactor, int maximumFactor, FoodMenuStruct foodMenu, FoodMenuStruct& currentMenu, FoodMenuStruct& bestMenu, int& bestSum, int indx=0, int currentSum=0){
+void findThesubset(int minimumFactor, int maximumFactor, vector<FoodMenuStruct>& foodMenu, vector<FoodMenuStruct>& currentMenu, vector<FoodMenuStruct>& bestMenu, 
+    int& bestSum, int indx=0, int currentSum=0){
     if (currentSum > maximumFactor) return;
     if ((currentSum >= minimumFactor) && (currentSum > bestSum)){
         bestSum = currentSum;
         bestMenu = currentMenu;
     }
-    for (int i=indx; i < foodMenu.foodPrices.size(); i++) {
-        currentMenu.foodNames.push_back(foodMenu.foodNames[i]);
-        currentMenu.foodPrices.push_back(foodMenu.foodPrices[i]);
-        findThesubset(minimumFactor, maximumFactor, foodMenu, currentMenu, bestMenu, bestSum, i+1, currentSum+foodMenu.foodPrices[i]);
-        currentMenu.foodNames.pop_back();
-        currentMenu.foodPrices.pop_back();
+    for (int i=indx; i < foodMenu.size(); i++) {
+        currentMenu.push_back(foodMenu[i]);
+        findThesubset(minimumFactor, maximumFactor, foodMenu, currentMenu, bestMenu, bestSum, i+1, currentSum+foodMenu[i].foodPrices);
+        currentMenu.pop_back();
     }
 }
 
-void takeTheRevenge(int numberOfFoods, int discountPercentage, int minimumFactor, int maximumDiscount, FoodMenuStruct foodMenu){
+void takeTheRevenge(int numberOfFoods, int discountPercentage, int minimumFactor, int maximumDiscount, vector<FoodMenuStruct>& foodMenu){
     int maximumFactor = maximumDiscount / (static_cast<double>(discountPercentage)/100);
     int bestSum=0;
-    FoodMenuStruct currentMenu;
-    FoodMenuStruct bestMenu;
+    vector<FoodMenuStruct> currentMenu;
+    vector<FoodMenuStruct> bestMenu;
     findThesubset(minimumFactor, maximumFactor, foodMenu, currentMenu, bestMenu, bestSum);
-    for (vector<string>::iterator it = bestMenu.foodNames.begin(); it != bestMenu.foodNames.end(); ++it){
-        cout << *it << endl;
+    for (const auto [theFoodPrice, theFoodName] : bestMenu){
+        cout << theFoodName << endl;
     } 
 }
 
@@ -73,7 +72,7 @@ int main(){
     int x = optionsVector[1];
     int l = optionsVector[2];
     int r = optionsVector[3];
-    FoodMenuStruct foodMenu = processTheMenu(n);
+    vector<FoodMenuStruct> foodMenu = processTheMenu(n);
     takeTheRevenge(n, x, l, r, foodMenu);
     return 0;
 }
