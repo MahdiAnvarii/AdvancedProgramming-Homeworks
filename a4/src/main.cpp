@@ -35,7 +35,21 @@ public:
         correctAnswer = correctAnswer_;
         difficulty = difficulty_;
         subject = subject_;
+        numOfIncorrect = 0;
+        numOfBlank = 0;
+        numOfCorrect = 0;
+        priority = 0;
     }
+    void setPriority(int numOfIncorrect_, int numOfBlank_, int numOfCorrect_){
+        numOfIncorrect = numOfIncorrect_;
+        numOfBlank = numOfBlank_;
+        numOfCorrect = numOfCorrect_;
+        priority = 3*numOfIncorrect_ + 1*numOfBlank_ - 2*numOfCorrect_;
+    }
+    string getQuestionText() const { return questionText; }
+    string getSubject() const { return subject; }
+    string getDifficulty() const { return difficulty; }
+    int getPriority() const { return priority; }
 private:
     string questionText;
     string option1;
@@ -45,9 +59,13 @@ private:
     int correctAnswer;
     string difficulty;
     string subject;
+    int numOfIncorrect;
+    int numOfBlank;
+    int numOfCorrect;
+    int priority;
 };
 
-struct QuestionsTemplate{
+struct QuestionsTemplateStruct{
     string subject;
     string difficulty;
     int count;
@@ -55,21 +73,73 @@ struct QuestionsTemplate{
 
 class TestTemplate{
 public:
-    TestTemplate(string testTemplateName_, const vector<QuestionsTemplate>& potentialQuestions_, const vector<TestTemplate*>& testTemplates){
+    TestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<TestTemplate*>& testTemplates){
         setTestTemplate(testTemplateName_, potentialQuestions_, testTemplates);
     }
-    void setTestTemplate(string testTemplateName_, const vector<QuestionsTemplate>& potentialQuestions_, const vector<TestTemplate*>& testTemplates){
+    void setTestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<TestTemplate*>& testTemplates){
         for (const auto t : testTemplates) {
             if (t->testTemplateName == testTemplateName_)
-                throw invalid_argument("Duplicate name: \'" + testTemplateName_ + "\'");
+                throw invalid_argument("Duplicate name: \'" + testTemplateName_ + "\'" + "\n");
         }
         testTemplateName = testTemplateName_;
         potentialQuestions = potentialQuestions_;
         cout << "Template \'" << testTemplateName_ << "\' was created successfully." << endl;
     }
+    string getTestTemplateName() const { return testTemplateName; }
+    vector<QuestionsTemplateStruct> getPotentialQuestions() const { return potentialQuestions; }
 private:
     string testTemplateName;
-    vector<QuestionsTemplate> potentialQuestions;
+    vector<QuestionsTemplateStruct> potentialQuestions;
+};
+
+void sortQuestions(vector<Question*>& questions, bool needPriority){
+    sort(questions.begin(), questions.end(), [needPriority](const Question* a, const Question* b) {
+        if (a->getSubject() != b->getSubject()) {
+            return a->getSubject() < b->getSubject();
+        }
+        if (needPriority && a->getPriority() != b->getPriority()) {
+            return a->getPriority() > b->getPriority();
+        }
+        return a->getQuestionText() < b->getQuestionText();
+    });
+}
+
+vector<Question*> selectQuestionsForTest(const TestTemplate& testTemplate_, const vector<Question*> questions){
+    vector<Question*> testQuestions;
+    vector<QuestionsTemplateStruct> potentialQuestions = testTemplate_.getPotentialQuestions();
+    for (const auto& potentialQuestion : potentialQuestions){
+        int theCount = potentialQuestion.count;
+        int theCounter = 0;
+        string theSubject = potentialQuestion.subject;
+        string theDifficulty = potentialQuestion.difficulty;
+        for (const auto& question : questions){
+            if (theCounter >= theCount) break;
+            else if (theSubject == question->getSubject() && theDifficulty == question->getDifficulty()){
+                testQuestions.push_back(question);
+                theCounter+=1;
+            }
+        }
+    }
+    return testQuestions;
+}
+
+class Test{
+public:
+    Test(string testName_, const TestTemplate& testTemplate_, const vector<Question*>& questions)
+    : testTemplate(testTemplate_){
+        vector<Question*> testQuestions_ = selectQuestionsForTest(testTemplate_, questions);
+        setTest(testName_, testTemplate_, testQuestions_);
+    }
+    void setTest(string testName_, const TestTemplate& testTemplate_, const vector<Question*>& testQuestions_){
+        testName = testName_;
+        testTemplate = testTemplate_;
+        testQuestions = testQuestions_;
+        cout << "Test \'" << testName_ << "\' was generated successfully." << endl;
+    }
+private:
+    string testName;
+    TestTemplate testTemplate;
+    vector<Question*> testQuestions;
 };
 
 vector<string> splitTheOrder(string order){
@@ -101,6 +171,7 @@ vector<Question*> processQuestionsFile(const string questionsFileAddress){
     vector<Question*> questions;
     getline(questionsFile, questionsFileLine);
     while(getline(questionsFile, questionsFileLine)){
+        //cout << questionsFileLine << endl;
         istringstream iss(questionsFileLine);
         string questionText, option1, option2, option3, option4, correctAnswer, difficulty, subject;
         getline(iss, questionText, ',');
@@ -115,12 +186,13 @@ vector<Question*> processQuestionsFile(const string questionsFileAddress){
         Question* question = new Question(questionText, option1, option2, option3, option4, stoi(correctAnswer), difficulty, subject);
         questions.push_back(question);
     }
+    sortQuestions(questions, true);
     return questions;
 }
 
 void createTemplate(const vector<string>& orderToVector, vector<TestTemplate*>& testTemplates){
-    string testTemplateName = orderToVector[1].substr(2, orderToVector[1].size()-2);
-    vector<QuestionsTemplate> potentialQuestions;
+    string testTemplateName = orderToVector[1];
+    vector<QuestionsTemplateStruct> potentialQuestions;
     for (int i=2; i<orderToVector.size(); i++){
         istringstream iss(orderToVector[i]);
         string subject, difficulty, count;
@@ -134,13 +206,36 @@ void createTemplate(const vector<string>& orderToVector, vector<TestTemplate*>& 
     testTemplates.push_back(testTemplate);
 }
 
-void takeTheOrders(const vector<Question*>& questions){
+void generateTest(const vector<string>& orderToVector, vector<Question*>& questions, const vector<TestTemplate*>& testTemplates, vector<Test*> tests){
+    string testName = orderToVector[1];
+    string testTemplateName = orderToVector[2];
+    sortQuestions(questions, true);
+    bool isTestTemplateNameValid = false;
+    TestTemplate* testTemplate = nullptr;
+    for (const auto& t : testTemplates) {
+        if (t->getTestTemplateName() == testTemplateName){
+            isTestTemplateNameValid = true;
+            testTemplate = t;
+        }
+    }
+    if (!isTestTemplateNameValid){
+        throw invalid_argument("Could not find template: \'" + testTemplateName + "\'" + "\n");
+    }
+
+    Test* test = new Test(testName, *testTemplate, questions);
+    tests.push_back(test);
+}
+
+void takeTheOrders(vector<Question*>& questions){
     string theOrder;
     vector<TestTemplate*> testTemplates;
+    vector<Test*> tests;
     while (getline(cin,theOrder)){
         vector<string> orderToVector = splitTheOrder(theOrder);
         if (orderToVector[0] == CREATE_TEMPLATE){
             createTemplate(orderToVector, testTemplates);
+        } else if (orderToVector[0] == GENERATE_TEST){
+            generateTest(orderToVector, questions, testTemplates, tests);
         }
     }
 }
