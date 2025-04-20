@@ -108,8 +108,10 @@ public:
     }
     void setTestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<TestTemplate*>& testTemplates){
         for (const auto t : testTemplates) {
-            if (t->testTemplateName == testTemplateName_)
-                throw invalid_argument("Duplicate name: \'" + testTemplateName_ + "\'" + "\n");
+            if (t->testTemplateName == testTemplateName_){
+                cout << "Duplicate name: \'" << testTemplateName_ << "\'" << endl;
+                return;
+            }
         }
         testTemplateName = testTemplateName_;
         potentialQuestions = potentialQuestions_;
@@ -164,6 +166,23 @@ public:
             }
         }
         return testQuestions;
+    }
+    void attendTest(){
+        cout << testName << ":" << endl << endl;
+        int questionCounter = 0;
+        string theAnswer;
+        bool isTheAnswerPrevious = false;
+        while (questionCounter < testQuestions.size()){
+            theAnswer = testQuestions[questionCounter]->printQuestion(questionCounter+1, isTheAnswerPrevious);
+            if (theAnswer == PREVIOUS){
+                questionCounter-=1;
+                isTheAnswerPrevious = true;
+            } else {
+                questionCounter+=1;
+                isTheAnswerPrevious = false;
+            }
+        }
+        cout << "Finished " << testName << " ." << endl;
     }
     string getTestName() const { return testName; }
     vector<Question*> getTestQuestions() const { return testQuestions; }
@@ -256,7 +275,8 @@ void generateTest(const vector<string>& orderToVector, vector<Question*>& questi
         }
     }
     if (!isTestTemplateNameValid){
-        throw invalid_argument("Could not find template: \'" + testTemplateName + "\'" + "\n");
+        cout << "Could not find template: \'" << testTemplateName << "\'" << endl;
+        return;
     }
 
     Test* test = new Test(testName, *testTemplate, questions);
@@ -264,7 +284,7 @@ void generateTest(const vector<string>& orderToVector, vector<Question*>& questi
     tests.push_back(test);
 }
 
-void attendToTest(const vector<string>& orderToVector, vector<Question*>& questions, vector<Test*>& tests){
+void attendToTest(const vector<string>& orderToVector, vector<Test*>& tests){
     string testName = orderToVector[1];
     bool isTestNameValid = false;
     Test* test = nullptr;
@@ -275,24 +295,10 @@ void attendToTest(const vector<string>& orderToVector, vector<Question*>& questi
         }
     }
     if (!isTestNameValid){
-        throw invalid_argument("Could not find test: \'" + testName + "\'" + "\n");
+        cout << "Could not find test: \'" << testName << "\'" << endl;
+        return;
     }
-    cout << test->getTestName() << ":" << endl << endl;
-    int questionCounter = 0;
-    vector<Question*> testQuestions = test->getTestQuestions();
-    string theAnswer;
-    bool isTheAnswerPrevious = false;
-    while (questionCounter < testQuestions.size()){
-        theAnswer = testQuestions[questionCounter]->printQuestion(questionCounter+1, isTheAnswerPrevious);
-        if (theAnswer == PREVIOUS){
-            questionCounter-=1;
-            isTheAnswerPrevious = true;
-        } else {
-            questionCounter+=1;
-            isTheAnswerPrevious = false;
-        }
-    }
-    cout << "Finished " << test->getTestName() << " ." << endl;
+    test->attendTest();
 }
 
 void takeTheOrders(vector<Question*>& questions){
@@ -308,7 +314,7 @@ void takeTheOrders(vector<Question*>& questions){
         } else if (orderToVector[0] == GENERATE_TEST){
             generateTest(orderToVector, questions, testTemplates, tests);
         } else if (orderToVector[0] == ATTEND){
-            attendToTest(orderToVector, questions, tests);            
+            attendToTest(orderToVector, tests);            
         }
     }
 }
