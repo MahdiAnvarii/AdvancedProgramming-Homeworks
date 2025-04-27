@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <cmath>
 #include <random>
+#include <map>
 
 using namespace std;
 
@@ -21,6 +22,9 @@ const string TESTS = "tests";
 const string SUBJECT = "subject";
 const vector<string> VALID_DIFFICULTIES = {"easy", "medium", "hard"};
 const string PREVIOUS = "previous";
+const string CORRECT = "correct";
+const string INCORRECT = "incorrect";
+const string BLANK = "blank";
 const vector<string> VALID_ANSWERS = {"1", "2", "3", "4", "", "previous"};
 const double TRUNCATION_FACTOR = 1000.0;
 const vector<string> HARD_SUBJECT_FOR_USER_1 = {":easy:3", ":medium:2", ":hard:1"};
@@ -59,10 +63,10 @@ public:
         priority = 0;
         numOfOccurrence = 0;
     }
-    string printQuestion(int questionCounter, bool isTheAnswerPrevious){
+    string printQuestion(int questionCounter){
         cout << questionCounter << ") " << questionText << endl;
         int answerIndex = -1;
-        if (isTheAnswerPrevious){
+        if (find(VALID_ANSWERS.begin(), VALID_ANSWERS.end(), theAnswer) != VALID_ANSWERS.end()){
             if (theAnswer == "1") answerIndex = 0;
             else if (theAnswer == "2") answerIndex = 1;
             else if (theAnswer == "3") answerIndex = 2;
@@ -78,21 +82,33 @@ public:
         cout << "Your answer: ";
         string theAnswer_;
         getline(cin, theAnswer_);
+        theAnswer_.erase(remove(theAnswer_.begin(), theAnswer_.end(), '\r'), theAnswer_.end());
         while ((find(VALID_ANSWERS.begin(), VALID_ANSWERS.end(), theAnswer_) == VALID_ANSWERS.end()) || (theAnswer_ == PREVIOUS && questionCounter==1)){
             cout << "Invalid answer, please try again." << endl;
             cout << "Your answer: ";
             getline(cin, theAnswer_);
+            theAnswer_.erase(remove(theAnswer_.begin(), theAnswer_.end(), '\r'), theAnswer_.end());
         }
-        theAnswer = theAnswer_;
+        if (theAnswer_ != PREVIOUS) theAnswer = theAnswer_;
         cout << endl;
         return theAnswer_;
     }
-    void evaluateTheQuestion(){
-        if (theAnswer.empty()) numOfBlank+=1;
-        else if (stoi(theAnswer)==correctAnswer) numOfCorrect+=1;
-        else numOfIncorrect+=1;
+    string evaluateTheQuestion(){
+        string theResult_;
+        if (theAnswer.empty()){
+            numOfBlank+=1;
+            theResult_ = BLANK;
+        } else if (stoi(theAnswer)==correctAnswer){
+            numOfCorrect+=1;
+            theResult_=CORRECT;
+        } else{
+            numOfIncorrect+=1;
+            theResult_ = INCORRECT;
+        }
         priority = 3*numOfIncorrect + 1*numOfBlank - 2*numOfCorrect;
         numOfOccurrence+=1;
+        theAnswer = "N";
+        return theResult_;
     }
     string getQuestionText() const { return questionText; }
     string getSubject() const { return subject; }
@@ -154,6 +170,93 @@ private:
     bool isAutoTemplate;
 };
 
+class Subject{
+public:
+    Subject(string subjectName_, const vector<Question*>& questions){
+        setSubjectName(subjectName_);
+        vector<Question*> subjectQuestions_ = selectQuestionsForSubject(questions);
+        setSubjectQuestions(subjectQuestions_);
+    }
+    void setSubjectName(string subjectName_){
+        subjectName = subjectName_;
+    }
+    void setSubjectQuestions(const vector<Question*>& subjectQuestions_){
+        subjectQuestions = subjectQuestions_;
+        totalCorrects=0.0;
+        totalIncorrects=0.0;
+        totalBlank=0.0;
+        totalOccurrence=0.0;
+        score=0.0;
+    }
+    vector<Question*> selectQuestionsForSubject(const vector<Question*> questions){
+        vector<Question*> subjectQuestions_;
+        for (const auto& question : questions){
+            if (subjectName == question->getSubject()){
+                subjectQuestions_.push_back(question);
+            }
+        }
+        return subjectQuestions_;
+    }
+    void calculateScoreForSubject(){
+        totalCorrects=0.0;
+        totalIncorrects=0.0;
+        totalBlank=0.0;
+        totalOccurrence=0.0;
+        for (const auto& subjectQuestion : subjectQuestions){
+            totalCorrects+=subjectQuestion->getNumOfcorrect();
+            totalIncorrects+=subjectQuestion->getNumOfIncorrect();
+            totalBlank+=subjectQuestion->getNumOfBlank();
+            totalOccurrence+=subjectQuestion->getNumOfOccurrence();
+        }
+        if (totalOccurrence) score = totalCorrects/totalOccurrence;
+    }
+    void totalReport(){
+        double scoreWithThreeDigits = trunc(score*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        cout << subjectName << ": " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " <<
+        totalBlank << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
+        cout.unsetf(ios::fixed);
+        cout.precision(6);
+    }
+    string getSubjectName() const { return subjectName; }
+    double getSubjectScore() const { return score; }
+    double getSubjectTotalCorrects() const { return totalCorrects; }
+    double getSubjectTotalBlank() const { return totalBlank; }
+    double getSubjectTotalIncorrects() const { return totalIncorrects; }
+    double getSubjectTotalOccurrence() const { return totalOccurrence; }
+private:
+    string subjectName;
+    vector<Question*> subjectQuestions;
+    double totalCorrects;
+    double totalIncorrects;
+    double totalBlank;
+    double totalOccurrence;
+    double score;
+};
+
+void sortSubjects(vector<Subject*>& subjects, bool needScore){
+    sort(subjects.begin(), subjects.end(), [needScore](const Subject* a, const Subject* b) {
+        if (needScore && a->getSubjectScore() != b->getSubjectScore()) {
+            return a->getSubjectScore() < b->getSubjectScore();
+        }
+        return a->getSubjectName() < b->getSubjectName();
+    });
+}
+
+vector<Subject*> processSubjects(const vector<Question*> questions){
+    vector<Subject*> subjects;
+    vector<string> subjectNames;
+    for (auto& question : questions){
+        string subjectName = question->getSubject();
+        if (find(subjectNames.begin(), subjectNames.end(), subjectName) == subjectNames.end()){
+            subjectNames.push_back(subjectName);
+            Subject* subject = new Subject(subjectName, questions);
+            subjects.push_back(subject);
+        }
+    }
+    sortSubjects(subjects, false);
+    return subjects;
+}
+
 class Test{
 public:
     Test(string testName_, const TestTemplate& testTemplate_, const vector<Question*>& questions)
@@ -165,6 +268,12 @@ public:
         testName = testName_;
         testTemplate = testTemplate_;
         testQuestions = testQuestions_;
+        testSubjects = processSubjects(testQuestions);
+        totalCorrects=0.0;
+        totalIncorrects=0.0;
+        totalBlank=0.0;
+        totalOccurrence=0.0;
+        totalScore=0.0;
         cout << "Test \'" << testName_ << "\' was generated successfully." << endl;
     }
     vector<Question*> selectQuestionsForTest(const TestTemplate& testTemplate_, const vector<Question*> questions){
@@ -189,22 +298,51 @@ public:
         cout << testName << ":" << endl << endl;
         int questionCounter = 0;
         string theAnswer;
-        bool isTheAnswerPrevious = false;
         while (questionCounter < testQuestions.size()){
-            theAnswer = testQuestions[questionCounter]->printQuestion(questionCounter+1, isTheAnswerPrevious);
+            theAnswer = testQuestions[questionCounter]->printQuestion(questionCounter+1);
             if (theAnswer == PREVIOUS){
                 questionCounter-=1;
-                isTheAnswerPrevious = true;
             } else {
                 questionCounter+=1;
-                isTheAnswerPrevious = false;
             }
         }
-        cout << "Finished " << testName << " ." << endl;
+        cout << "Finished " << testName << "." << endl;
 
         for (int k=0; k< testQuestions.size(); ++k){
-            testQuestions[k]->evaluateTheQuestion();
+            string theResult_ = testQuestions[k]->evaluateTheQuestion();
+            string subjectName_ = testQuestions[k]->getSubject();
+            if (theResult_==CORRECT){
+                totalCorrects+=1;
+                eachSubjectCorrects[subjectName_]+=1;
+            } else if (theResult_==BLANK){
+                totalBlank+=1;
+                eachSubjectBlank[subjectName_]+=1;
+            } else{
+                totalIncorrects+=1;
+                eachSubjectIncorrects[subjectName_]+=1;
+            }
+            totalOccurrence+=1;
+            eachSubjectOccurrence[subjectName_]+=1;
         }
+    }
+    void reportTest(){
+        for (const auto& testSubject : testSubjects){
+            string subjectName_ = testSubject->getSubjectName();
+            if (eachSubjectOccurrence[subjectName_]) eachSubjectScore[subjectName_] = eachSubjectCorrects[subjectName_]/eachSubjectOccurrence[subjectName_];
+
+            double scoreWithThreeDigits = trunc(eachSubjectScore[subjectName_]*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+            cout << subjectName_ << ": " << eachSubjectCorrects[subjectName_] << " corrects, " << eachSubjectIncorrects[subjectName_] << " incorrects and " <<
+            eachSubjectBlank[subjectName_] << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
+            cout.unsetf(ios::fixed);
+            cout.precision(6);
+        }
+        
+        if (totalOccurrence) totalScore=totalCorrects/totalOccurrence;
+        double totalScoreWithThreeDigits = trunc(totalScore*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        cout << "Total results: " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." << endl;
+        cout << "Total score: " << fixed << setprecision(3) << totalScoreWithThreeDigits << "%." << endl;
+        cout.unsetf(ios::fixed);
+        cout.precision(6);
     }
     string getTestName() const { return testName; }
     vector<Question*> getTestQuestions() const { return testQuestions; }
@@ -215,57 +353,18 @@ private:
     string testName;
     TestTemplate testTemplate;
     vector<Question*> testQuestions;
+    vector<Subject*> testSubjects;
+    double totalCorrects;
+    double totalIncorrects;
+    double totalBlank;
+    double totalOccurrence;
+    double totalScore;
+    map<string, double> eachSubjectCorrects;
+    map<string, double> eachSubjectIncorrects;
+    map<string, double> eachSubjectBlank;
+    map<string, double> eachSubjectOccurrence;
+    map<string, double> eachSubjectScore;
 };
-
-class Subject{
-public:
-    Subject(string subjectName_, const vector<Question*>& questions){
-        setSubjectName(subjectName_);
-        vector<Question*> subjectQuestions_ = selectQuestionsForSubject(questions);
-        setSubjectQuestions(subjectQuestions_);
-    }
-    void setSubjectName(string subjectName_){
-        subjectName = subjectName_;
-    }
-    void setSubjectQuestions(const vector<Question*>& subjectQuestions_){
-        subjectQuestions = subjectQuestions_;
-        score=0;
-    }
-    vector<Question*> selectQuestionsForSubject(const vector<Question*> questions){
-        vector<Question*> subjectQuestions_;
-        for (const auto& question : questions){
-            if (subjectName == question->getSubject()){
-                subjectQuestions_.push_back(question);
-            }
-        }
-        return subjectQuestions_;
-    }
-    void calculateScoreForSubject(){
-        double totalCorrects=0.0;
-        double totalOccurrence=0.0;
-        for (const auto& subjectQuestion : subjectQuestions){
-            totalCorrects+=subjectQuestion->getNumOfcorrect();
-            totalOccurrence+=subjectQuestion->getNumOfOccurrence();
-        }
-        if (totalOccurrence) score = totalCorrects/totalOccurrence;
-        //score = trunc(score * TRUNCATION_FACTOR) / TRUNCATION_FACTOR;
-    }
-    string getSubjectName() const { return subjectName; }
-    double getSubjectScore() const { return score; }
-private:
-    string subjectName;
-    vector<Question*> subjectQuestions;
-    double score;
-};
-
-void sortSubjects(vector<Subject*>& subjects){
-    sort(subjects.begin(), subjects.end(), [](const Subject* a, const Subject* b) {
-        if (a->getSubjectScore() != b->getSubjectScore()) {
-            return a->getSubjectScore() < b->getSubjectScore();
-        }
-        return a->getSubjectName() < b->getSubjectName();
-    });
-}
 
 vector<string> splitTheOrder(string order){
     istringstream iss(order);
@@ -299,7 +398,6 @@ vector<Question*> processQuestionsFile(const string questionsFileAddress){
     vector<Question*> questions;
     getline(questionsFile, questionsFileLine);
     while(getline(questionsFile, questionsFileLine)){
-        //cout << questionsFileLine << endl;
         istringstream iss(questionsFileLine);
         string questionText, option1, option2, option3, option4, correctAnswer, difficulty, subject;
         getline(iss, questionText, ',');
@@ -316,21 +414,6 @@ vector<Question*> processQuestionsFile(const string questionsFileAddress){
     }
     sortQuestions(questions, true);
     return questions;
-}
-
-vector<Subject*> processSubjects(const vector<Question*> questions){
-    vector<Subject*> subjects;
-    vector<string> subjectNames;
-    for (auto& question : questions){
-        string subjectName = question->getSubject();
-        if (find(subjectNames.begin(), subjectNames.end(), subjectName) == subjectNames.end()){
-            subjectNames.push_back(subjectName);
-            Subject* subject = new Subject(subjectName, questions);
-            subjects.push_back(subject);
-        }
-    }
-    sortSubjects(subjects);
-    return subjects;
 }
 
 void createTemplate(const vector<string>& orderToVector, vector<TestTemplate*>& testTemplates, bool isAutoTemplate){
@@ -403,7 +486,7 @@ void autoGenerateTest(const vector<string>& orderToVector, vector<Question*>& qu
     for (auto& subject : subjects){
         subject->calculateScoreForSubject();
     }
-    sortSubjects(subjects);
+    sortSubjects(subjects, true);
     string testTemplateName = generateRandomTemplateName();
     string testName = orderToVector[1];
     vector<string> ordersOfTemplateCreation;
@@ -426,6 +509,54 @@ void autoGenerateTest(const vector<string>& orderToVector, vector<Question*>& qu
     generateTest(ordersOfTestGeneration, questions, testTemplates, tests);
 }
 
+void reportAll(const vector<Question*> questions, vector<Subject*> subjects){
+    for (auto& subject : subjects){
+        subject->calculateScoreForSubject();
+    }
+    sortSubjects(subjects, false);
+    cout << "Total report: " << endl << endl;
+    double allSubjectsCorrects=0.0;
+    double allSubjectsIncorrects=0.0;
+    double allSubjectsBlank=0.0;
+    double allSubjectsOccurrence=0.0;
+    for (const auto& subject : subjects){
+        subject->totalReport();
+        allSubjectsCorrects += subject->getSubjectTotalCorrects();
+        allSubjectsIncorrects += subject->getSubjectTotalIncorrects();
+        allSubjectsBlank += subject->getSubjectTotalBlank();
+        allSubjectsOccurrence += subject->getSubjectTotalOccurrence();
+    }
+    cout << endl;
+
+    double allSubjectScore=0.0;
+    if (allSubjectsOccurrence) allSubjectScore=allSubjectsCorrects/allSubjectsOccurrence;
+    double allSubjectsScoreWithThreeDigits = trunc(allSubjectScore*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+    cout << "Total results: " << allSubjectsCorrects << " corrects, " << allSubjectsIncorrects << " incorrects and " << allSubjectsBlank << " blanks." << endl;
+    cout << "Total score: " << fixed << setprecision(3) << allSubjectsScoreWithThreeDigits << "%." << endl;
+    cout.unsetf(ios::fixed);
+    cout.precision(6);
+}
+
+void reportTest(const vector<string>& orderToVector, vector<Test*>& tests){
+    string testName = orderToVector[2];
+    Test* test = nullptr;
+    for (const auto& t : tests) {
+        if (t->getTestName() == testName){
+            test = t;
+        }
+    }
+    cout << "Results for " << test->getTestName() << ":" << endl << endl;
+    test->reportTest();
+}
+
+void reportTests(){
+    
+}
+
+void reportSubject(){
+
+}
+
 void takeTheOrders(vector<Question*>& questions, vector<Subject*>& subjects){
     string theOrder;
     vector<TestTemplate*> testTemplates;
@@ -442,6 +573,11 @@ void takeTheOrders(vector<Question*>& questions, vector<Subject*>& subjects){
             attendToTest(orderToVector, tests);          
         } else if (orderToVector[0] == AUTO_GENERATE){
             autoGenerateTest(orderToVector, questions, tests, testTemplates, subjects);
+        } else if (orderToVector[0] == REPORT){
+            if (orderToVector[1] == ALL) reportAll(questions, subjects);
+            else if (orderToVector[1] == TEST) reportTest(orderToVector, tests);
+            else if (orderToVector[1] == TESTS) reportTests();
+            else if (orderToVector[1] == SUBJECT) reportSubject();
         } 
     }
 }
