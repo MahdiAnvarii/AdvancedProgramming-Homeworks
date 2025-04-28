@@ -10,6 +10,7 @@
 #include <map>
 #include <ctime>
 #include <cctype>
+#include <memory>
 
 using namespace std;
 
@@ -139,8 +140,8 @@ private:
     string theAnswer;
 };
 
-void sortQuestions(vector<Question*>& questions, bool needPriority){
-    sort(questions.begin(), questions.end(), [needPriority](const Question* a, const Question* b) {
+void sortQuestions(vector<shared_ptr<Question>>& questions, bool needPriority){
+    sort(questions.begin(), questions.end(), [needPriority](const shared_ptr<Question> a, const shared_ptr<Question> b) {
         if (a->getSubject() != b->getSubject()) {
             return a->getSubject() < b->getSubject();
         }
@@ -153,10 +154,10 @@ void sortQuestions(vector<Question*>& questions, bool needPriority){
 
 class TestTemplate{
 public:
-    TestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<TestTemplate*>& testTemplates, bool isAutoTemplate_){
+    TestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<shared_ptr<TestTemplate>>& testTemplates, bool isAutoTemplate_){
         setTestTemplate(testTemplateName_, potentialQuestions_, testTemplates, isAutoTemplate_);
     }
-    void setTestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<TestTemplate*>& testTemplates, bool isAutoTemplate_){
+    void setTestTemplate(string testTemplateName_, const vector<QuestionsTemplateStruct>& potentialQuestions_, const vector<shared_ptr<TestTemplate>>& testTemplates, bool isAutoTemplate_){
         for (const auto t : testTemplates) {
             if (t->testTemplateName == testTemplateName_){
                 cout << "Duplicate name: \'" << testTemplateName_ << "\'" << endl;
@@ -178,15 +179,15 @@ private:
 
 class Subject{
 public:
-    Subject(string subjectName_, const vector<Question*>& questions){
+    Subject(string subjectName_, const vector<shared_ptr<Question>>& questions){
         setSubjectName(subjectName_);
-        vector<Question*> subjectQuestions_ = selectQuestionsForSubject(questions);
+        vector<shared_ptr<Question>> subjectQuestions_ = selectQuestionsForSubject(questions);
         setSubjectQuestions(subjectQuestions_);
     }
     void setSubjectName(string subjectName_){
         subjectName = subjectName_;
     }
-    void setSubjectQuestions(const vector<Question*>& subjectQuestions_){
+    void setSubjectQuestions(const vector<shared_ptr<Question>>& subjectQuestions_){
         subjectQuestions = subjectQuestions_;
         totalCorrects=0.0;
         totalIncorrects=0.0;
@@ -194,8 +195,8 @@ public:
         totalOccurrence=0.0;
         score=0.0;
     }
-    vector<Question*> selectQuestionsForSubject(const vector<Question*> questions){
-        vector<Question*> subjectQuestions_;
+    vector<shared_ptr<Question>> selectQuestionsForSubject(const vector<shared_ptr<Question>> questions){
+        vector<shared_ptr<Question>> subjectQuestions_;
         for (const auto& question : questions){
             if (subjectName == question->getSubject()){
                 subjectQuestions_.push_back(question);
@@ -253,7 +254,7 @@ public:
     double getSubjectTotalOccurrence() const { return totalOccurrence; }
 private:
     string subjectName;
-    vector<Question*> subjectQuestions;
+    vector<shared_ptr<Question>> subjectQuestions;
     double totalCorrects;
     double totalIncorrects;
     double totalBlank;
@@ -264,8 +265,8 @@ private:
     map<string, double> eachDifficultyBlank;
 };
 
-void sortSubjects(vector<Subject*>& subjects, bool needScore){
-    sort(subjects.begin(), subjects.end(), [needScore](const Subject* a, const Subject* b) {
+void sortSubjects(vector<shared_ptr<Subject>>& subjects, bool needScore){
+    sort(subjects.begin(), subjects.end(), [needScore](const shared_ptr<Subject> a, const shared_ptr<Subject> b) {
         if (needScore && a->getSubjectScore() != b->getSubjectScore()) {
             return a->getSubjectScore() < b->getSubjectScore();
         }
@@ -273,14 +274,14 @@ void sortSubjects(vector<Subject*>& subjects, bool needScore){
     });
 }
 
-vector<Subject*> processSubjects(const vector<Question*> questions){
-    vector<Subject*> subjects;
+vector<shared_ptr<Subject>> processSubjects(const vector<shared_ptr<Question>> questions){
+    vector<shared_ptr<Subject>> subjects;
     vector<string> subjectNames;
     for (auto& question : questions){
         string subjectName = question->getSubject();
         if (find(subjectNames.begin(), subjectNames.end(), subjectName) == subjectNames.end()){
             subjectNames.push_back(subjectName);
-            Subject* subject = new Subject(subjectName, questions);
+            shared_ptr<Subject> subject = make_shared<Subject>(subjectName, questions);
             subjects.push_back(subject);
         }
     }
@@ -290,12 +291,12 @@ vector<Subject*> processSubjects(const vector<Question*> questions){
 
 class Test{
 public:
-    Test(string testName_, const TestTemplate& testTemplate_, const vector<Question*>& questions)
+    Test(string testName_, const TestTemplate& testTemplate_, const vector<shared_ptr<Question>>& questions)
     : testTemplate(testTemplate_){
-        vector<Question*> testQuestions_ = selectQuestionsForTest(testTemplate_, questions);
+        vector<shared_ptr<Question>> testQuestions_ = selectQuestionsForTest(testTemplate_, questions);
         setTest(testName_, testTemplate_, testQuestions_);
     }
-    void setTest(string testName_, const TestTemplate& testTemplate_, const vector<Question*>& testQuestions_){
+    void setTest(string testName_, const TestTemplate& testTemplate_, const vector<shared_ptr<Question>>& testQuestions_){
         testName = testName_;
         testTemplate = testTemplate_;
         testQuestions = testQuestions_;
@@ -308,8 +309,8 @@ public:
         timeOfAttendance=0;
         cout << "Test \'" << testName_ << "\' was generated successfully." << endl;
     }
-    vector<Question*> selectQuestionsForTest(const TestTemplate& testTemplate_, const vector<Question*> questions){
-        vector<Question*> testQuestions_;
+    vector<shared_ptr<Question>> selectQuestionsForTest(const TestTemplate& testTemplate_, const vector<shared_ptr<Question>> questions){
+        vector<shared_ptr<Question>> testQuestions_;
         vector<QuestionsTemplateStruct> potentialQuestions = testTemplate_.getPotentialQuestions();
         for (const auto& potentialQuestion : potentialQuestions){
             int theCount = potentialQuestion.count;
@@ -387,15 +388,15 @@ public:
     }
     string getTestName() const { return testName; }
     time_t getTestTime() const { return timeOfAttendance; }
-    vector<Question*> getTestQuestions() const { return testQuestions; }
+    vector<shared_ptr<Question>> getTestQuestions() const { return testQuestions; }
     void sortTestQuestions(){
         sortQuestions(testQuestions, false);
     }
 private:
     string testName;
     TestTemplate testTemplate;
-    vector<Question*> testQuestions;
-    vector<Subject*> testSubjects;
+    vector<shared_ptr<Question>> testQuestions;
+    vector<shared_ptr<Subject>> testSubjects;
     double totalCorrects;
     double totalIncorrects;
     double totalBlank;
@@ -409,8 +410,8 @@ private:
     time_t timeOfAttendance;
 };
 
-void sortTests(vector<Test*>& tests){
-    sort(tests.begin(), tests.end(), [](const Test* a, const Test* b) {
+void sortTests(vector<shared_ptr<Test>>& tests){
+    sort(tests.begin(), tests.end(), [](const shared_ptr<Test> a, const shared_ptr<Test> b) {
         return a->getTestTime() < b->getTestTime();
     });
 }
@@ -441,10 +442,10 @@ vector<string> splitTheOrder(string order){
     return orderToVector;
 }
 
-vector<Question*> processQuestionsFile(const string questionsFileAddress){
+vector<shared_ptr<Question>> processQuestionsFile(const string questionsFileAddress){
     ifstream questionsFile(questionsFileAddress);
     string questionsFileLine;
-    vector<Question*> questions;
+    vector<shared_ptr<Question>> questions;
     getline(questionsFile, questionsFileLine);
     while(getline(questionsFile, questionsFileLine)){
         istringstream iss(questionsFileLine);
@@ -458,14 +459,14 @@ vector<Question*> processQuestionsFile(const string questionsFileAddress){
         getline(iss, difficulty, ',');
         getline(iss, subject, ',');
         
-        Question* question = new Question(questionText, option1, option2, option3, option4, stoi(correctAnswer), difficulty, subject);
+        shared_ptr<Question> question = make_shared<Question>(questionText, option1, option2, option3, option4, stoi(correctAnswer), difficulty, subject);
         questions.push_back(question);
     }
     sortQuestions(questions, true);
     return questions;
 }
 
-void createTemplate(const vector<string>& orderToVector, vector<TestTemplate*>& testTemplates, bool isAutoTemplate){
+void createTemplate(const vector<string>& orderToVector, vector<shared_ptr<TestTemplate>>& testTemplates, bool isAutoTemplate){
     string testTemplateName = orderToVector[1];
     vector<QuestionsTemplateStruct> potentialQuestions;
     for (int i=2; i<orderToVector.size(); i++){
@@ -477,16 +478,16 @@ void createTemplate(const vector<string>& orderToVector, vector<TestTemplate*>& 
         potentialQuestions.push_back({subject, difficulty, stoi(count)});
     }
 
-    TestTemplate* testTemplate = new TestTemplate(testTemplateName, potentialQuestions, testTemplates, isAutoTemplate);
+    shared_ptr<TestTemplate> testTemplate = make_shared<TestTemplate>(testTemplateName, potentialQuestions, testTemplates, isAutoTemplate);
     testTemplates.push_back(testTemplate);
 }
 
-void generateTest(const vector<string>& orderToVector, vector<Question*>& questions, const vector<TestTemplate*>& testTemplates, vector<Test*>& tests){
+void generateTest(const vector<string>& orderToVector, vector<shared_ptr<Question>>& questions, const vector<shared_ptr<TestTemplate>>& testTemplates, vector<shared_ptr<Test>>& tests){
     string testName = orderToVector[1];
     string testTemplateName = orderToVector[2];
     sortQuestions(questions, true);
     bool isTestTemplateNameValid = false;
-    TestTemplate* testTemplate = nullptr;
+    shared_ptr<TestTemplate> testTemplate = nullptr;
     for (const auto& t : testTemplates) {
         if (t->getTestTemplateName() == testTemplateName){
             isTestTemplateNameValid = true;
@@ -498,15 +499,15 @@ void generateTest(const vector<string>& orderToVector, vector<Question*>& questi
         return;
     }
 
-    Test* test = new Test(testName, *testTemplate, questions);
+    shared_ptr<Test> test = make_shared<Test>(testName, *testTemplate, questions);
     test->sortTestQuestions();
     tests.push_back(test);
 }
 
-void attendToTest(const vector<string>& orderToVector, vector<Test*>& tests){
+void attendToTest(const vector<string>& orderToVector, vector<shared_ptr<Test>>& tests){
     string testName = orderToVector[1];
     bool isTestNameValid = false;
-    Test* test = nullptr;
+    shared_ptr<Test> test = nullptr;
     for (const auto& t : tests) {
         if (t->getTestName() == testName){
             isTestNameValid = true;
@@ -531,7 +532,7 @@ string generateRandomTemplateName() {
     return randomTemplateName;
 }
 
-void autoGenerateTest(const vector<string>& orderToVector, vector<Question*>& questions, vector<Test*>& tests, vector<TestTemplate*> testTemplates, vector<Subject*>& subjects){
+void autoGenerateTest(const vector<string>& orderToVector, vector<shared_ptr<Question>>& questions, vector<shared_ptr<Test>>& tests, vector<shared_ptr<TestTemplate>> testTemplates, vector<shared_ptr<Subject>>& subjects){
     for (auto& subject : subjects){
         subject->calculateScoreForSubject();
     }
@@ -558,7 +559,7 @@ void autoGenerateTest(const vector<string>& orderToVector, vector<Question*>& qu
     generateTest(ordersOfTestGeneration, questions, testTemplates, tests);
 }
 
-void reportAll(const vector<Question*> questions, vector<Subject*> subjects){
+void reportAll(const vector<shared_ptr<Question>> questions, vector<shared_ptr<Subject>> subjects){
     for (auto& subject : subjects){
         subject->calculateScoreForSubject();
     }
@@ -585,9 +586,9 @@ void reportAll(const vector<Question*> questions, vector<Subject*> subjects){
     cout.precision(6);
 }
 
-void reportTest(const vector<string>& orderToVector, vector<Test*>& tests){
+void reportTest(const vector<string>& orderToVector, vector<shared_ptr<Test>>& tests){
     string testName = orderToVector[2];
-    Test* test = nullptr;
+    shared_ptr<Test> test = nullptr;
     for (auto& t : tests) {
         if (t->getTestName() == testName){
             test = t;
@@ -597,7 +598,7 @@ void reportTest(const vector<string>& orderToVector, vector<Test*>& tests){
     test->reportTest();
 }
 
-void reportTests(vector<Test*>& tests){
+void reportTests(vector<shared_ptr<Test>>& tests){
     cout << "Results per attended tests: " << endl << endl;
     sortTests(tests);
     for (auto& test : tests) {
@@ -607,9 +608,9 @@ void reportTests(vector<Test*>& tests){
     }
 }
 
-void reportSubject(const vector<string>& orderToVector, vector<Subject*>& subjects){
+void reportSubject(const vector<string>& orderToVector, vector<shared_ptr<Subject>>& subjects){
     string subjectName = orderToVector[2];
-    Subject* subject = nullptr;
+    shared_ptr<Subject> subject = nullptr;
     for (auto& s : subjects) {
         if (s->getSubjectName() == subjectName){
             subject = s;
@@ -620,10 +621,10 @@ void reportSubject(const vector<string>& orderToVector, vector<Subject*>& subjec
     subject->reportSubject();
 }
 
-void takeTheOrders(vector<Question*>& questions, vector<Subject*>& subjects){
+void takeTheOrders(vector<shared_ptr<Question>>& questions, vector<shared_ptr<Subject>>& subjects){
     string theOrder;
-    vector<TestTemplate*> testTemplates;
-    vector<Test*> tests;
+    vector<shared_ptr<TestTemplate>> testTemplates;
+    vector<shared_ptr<Test>> tests;
     while (getline(cin,theOrder)){
         if (theOrder.empty()) continue;
         vector<string> orderToVector = splitTheOrder(theOrder);
@@ -654,7 +655,12 @@ void checkArguments(int argc) {
 int main(int argc, char* argv[]){
     checkArguments(argc);
     const string questionFileAddress = argv[1];
-    vector<Question*> questions = processQuestionsFile(questionFileAddress);
-    vector<Subject*> subjects = processSubjects(questions);
+    vector<shared_ptr<Question>> questions = processQuestionsFile(questionFileAddress);
+    vector<shared_ptr<Subject>> subjects = processSubjects(questions);
     takeTheOrders(questions, subjects);
+    // ToDo List
+    // 1. Multifile the program
+    // 2. Change pointers to smart pointers
+    // 3. Reduce redundancy specially in reportings
+    // 4. Create a top-level class
 }
