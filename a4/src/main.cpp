@@ -8,6 +8,8 @@
 #include <cmath>
 #include <random>
 #include <map>
+#include <ctime>
+#include <cctype>
 
 using namespace std;
 
@@ -27,10 +29,14 @@ const string INCORRECT = "incorrect";
 const string BLANK = "blank";
 const vector<string> VALID_ANSWERS = {"1", "2", "3", "4", "", "previous"};
 const double TRUNCATION_FACTOR = 1000.0;
+const double PERCENTAGE_FACTOR = 100.0;
 const vector<string> HARD_SUBJECT_FOR_USER_1 = {":easy:3", ":medium:2", ":hard:1"};
 const vector<string> HARD_SUBJECT_FOR_USER_2 = {":easy:2", ":medium:1", ":hard:1"};
 const string RANDOM_TEMPLATE_CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const int RANDOM_TEMPLATE_LENGTH = 20;
+const string noInputFile =  "No input file provided.\n"
+                            "Usage: ./main <question_file_path>\n"
+                            "Example: ./main ../csv/questions.csv";
 
 struct QuestionsTemplateStruct{
     string subject;
@@ -202,18 +208,40 @@ public:
         totalIncorrects=0.0;
         totalBlank=0.0;
         totalOccurrence=0.0;
+        for (const auto difficulty_ : VALID_DIFFICULTIES){
+            eachDifficultyCorrects[difficulty_]=0.0;
+            eachDifficultyIncorrects[difficulty_] =0.0;
+            eachDifficultyBlank[difficulty_]=0.0;
+        }
         for (const auto& subjectQuestion : subjectQuestions){
             totalCorrects+=subjectQuestion->getNumOfcorrect();
             totalIncorrects+=subjectQuestion->getNumOfIncorrect();
             totalBlank+=subjectQuestion->getNumOfBlank();
             totalOccurrence+=subjectQuestion->getNumOfOccurrence();
+
+            string difficulty_ = subjectQuestion->getDifficulty();
+            eachDifficultyCorrects[difficulty_]+=subjectQuestion->getNumOfcorrect();
+            eachDifficultyIncorrects[difficulty_]+=subjectQuestion->getNumOfIncorrect();
+            eachDifficultyBlank[difficulty_]+=subjectQuestion->getNumOfBlank();
         }
         if (totalOccurrence) score = totalCorrects/totalOccurrence;
     }
     void totalReport(){
-        double scoreWithThreeDigits = trunc(score*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        double scoreWithThreeDigits = trunc(score*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
         cout << subjectName << ": " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " <<
         totalBlank << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
+        cout.unsetf(ios::fixed);
+        cout.precision(6);
+    }
+    void reportSubject(){
+        for (auto difficulty_ : VALID_DIFFICULTIES){
+            string difficultyUpperCased_ = difficulty_;
+            difficultyUpperCased_[0] = toupper(difficultyUpperCased_[0]);
+            cout << difficultyUpperCased_ << ": " << eachDifficultyCorrects[difficulty_] << " corrects, " << eachDifficultyIncorrects[difficulty_] 
+            << " incorrects and " << eachDifficultyBlank[difficulty_] << " blanks." << endl;
+        }
+        double scoreWithThreeDigits = trunc(score*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        cout << endl << "Total score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
         cout.unsetf(ios::fixed);
         cout.precision(6);
     }
@@ -231,6 +259,9 @@ private:
     double totalBlank;
     double totalOccurrence;
     double score;
+    map<string, double> eachDifficultyCorrects;
+    map<string, double> eachDifficultyIncorrects;
+    map<string, double> eachDifficultyBlank;
 };
 
 void sortSubjects(vector<Subject*>& subjects, bool needScore){
@@ -274,6 +305,7 @@ public:
         totalBlank=0.0;
         totalOccurrence=0.0;
         totalScore=0.0;
+        timeOfAttendance=0;
         cout << "Test \'" << testName_ << "\' was generated successfully." << endl;
     }
     vector<Question*> selectQuestionsForTest(const TestTemplate& testTemplate_, const vector<Question*> questions){
@@ -295,6 +327,7 @@ public:
         return testQuestions_;
     }
     void attendTest(){
+        timeOfAttendance = time(nullptr);
         cout << testName << ":" << endl << endl;
         int questionCounter = 0;
         string theAnswer;
@@ -330,7 +363,7 @@ public:
             string subjectName_ = testSubject->getSubjectName();
             if (eachSubjectOccurrence[subjectName_]) eachSubjectScore[subjectName_] = eachSubjectCorrects[subjectName_]/eachSubjectOccurrence[subjectName_];
 
-            double scoreWithThreeDigits = trunc(eachSubjectScore[subjectName_]*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+            double scoreWithThreeDigits = trunc(eachSubjectScore[subjectName_]*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
             cout << subjectName_ << ": " << eachSubjectCorrects[subjectName_] << " corrects, " << eachSubjectIncorrects[subjectName_] << " incorrects and " <<
             eachSubjectBlank[subjectName_] << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
             cout.unsetf(ios::fixed);
@@ -338,13 +371,22 @@ public:
         }
         
         if (totalOccurrence) totalScore=totalCorrects/totalOccurrence;
-        double totalScoreWithThreeDigits = trunc(totalScore*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
-        cout << "Total results: " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." << endl;
+        double totalScoreWithThreeDigits = trunc(totalScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        cout << endl << "Total results: " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." << endl;
         cout << "Total score: " << fixed << setprecision(3) << totalScoreWithThreeDigits << "%." << endl;
         cout.unsetf(ios::fixed);
         cout.precision(6);
     }
+    void reportTests(){
+        if (totalOccurrence) totalScore=totalCorrects/totalOccurrence;
+        double totalScoreWithThreeDigits = trunc(totalScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        cout << testName << ": " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." 
+        << " Score: " << fixed << setprecision(3) << totalScoreWithThreeDigits << "%." << endl;
+        cout.unsetf(ios::fixed);
+        cout.precision(6);
+    }
     string getTestName() const { return testName; }
+    time_t getTestTime() const { return timeOfAttendance; }
     vector<Question*> getTestQuestions() const { return testQuestions; }
     void sortTestQuestions(){
         sortQuestions(testQuestions, false);
@@ -364,7 +406,14 @@ private:
     map<string, double> eachSubjectBlank;
     map<string, double> eachSubjectOccurrence;
     map<string, double> eachSubjectScore;
+    time_t timeOfAttendance;
 };
+
+void sortTests(vector<Test*>& tests){
+    sort(tests.begin(), tests.end(), [](const Test* a, const Test* b) {
+        return a->getTestTime() < b->getTestTime();
+    });
+}
 
 vector<string> splitTheOrder(string order){
     istringstream iss(order);
@@ -526,12 +575,11 @@ void reportAll(const vector<Question*> questions, vector<Subject*> subjects){
         allSubjectsBlank += subject->getSubjectTotalBlank();
         allSubjectsOccurrence += subject->getSubjectTotalOccurrence();
     }
-    cout << endl;
 
     double allSubjectScore=0.0;
     if (allSubjectsOccurrence) allSubjectScore=allSubjectsCorrects/allSubjectsOccurrence;
-    double allSubjectsScoreWithThreeDigits = trunc(allSubjectScore*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
-    cout << "Total results: " << allSubjectsCorrects << " corrects, " << allSubjectsIncorrects << " incorrects and " << allSubjectsBlank << " blanks." << endl;
+    double allSubjectsScoreWithThreeDigits = trunc(allSubjectScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+    cout << endl << "Total results: " << allSubjectsCorrects << " corrects, " << allSubjectsIncorrects << " incorrects and " << allSubjectsBlank << " blanks." << endl;
     cout << "Total score: " << fixed << setprecision(3) << allSubjectsScoreWithThreeDigits << "%." << endl;
     cout.unsetf(ios::fixed);
     cout.precision(6);
@@ -540,7 +588,7 @@ void reportAll(const vector<Question*> questions, vector<Subject*> subjects){
 void reportTest(const vector<string>& orderToVector, vector<Test*>& tests){
     string testName = orderToVector[2];
     Test* test = nullptr;
-    for (const auto& t : tests) {
+    for (auto& t : tests) {
         if (t->getTestName() == testName){
             test = t;
         }
@@ -549,12 +597,27 @@ void reportTest(const vector<string>& orderToVector, vector<Test*>& tests){
     test->reportTest();
 }
 
-void reportTests(){
-    
+void reportTests(vector<Test*>& tests){
+    cout << "Results per attended tests: " << endl << endl;
+    sortTests(tests);
+    for (auto& test : tests) {
+        if (test->getTestTime()){
+            test->reportTests();
+        }
+    }
 }
 
-void reportSubject(){
-
+void reportSubject(const vector<string>& orderToVector, vector<Subject*>& subjects){
+    string subjectName = orderToVector[2];
+    Subject* subject = nullptr;
+    for (auto& s : subjects) {
+        if (s->getSubjectName() == subjectName){
+            subject = s;
+        }
+    }
+    subject->calculateScoreForSubject();
+    cout << "Results for " << subject->getSubjectName() << ":" << endl << endl;
+    subject->reportSubject();
 }
 
 void takeTheOrders(vector<Question*>& questions, vector<Subject*>& subjects){
@@ -576,13 +639,20 @@ void takeTheOrders(vector<Question*>& questions, vector<Subject*>& subjects){
         } else if (orderToVector[0] == REPORT){
             if (orderToVector[1] == ALL) reportAll(questions, subjects);
             else if (orderToVector[1] == TEST) reportTest(orderToVector, tests);
-            else if (orderToVector[1] == TESTS) reportTests();
-            else if (orderToVector[1] == SUBJECT) reportSubject();
+            else if (orderToVector[1] == TESTS) reportTests(tests);
+            else if (orderToVector[1] == SUBJECT) reportSubject(orderToVector, subjects);
         } 
     }
 }
 
+void checkArguments(int argc) {
+    if (argc < 2) {
+        throw logic_error(noInputFile);
+    }
+}
+
 int main(int argc, char* argv[]){
+    checkArguments(argc);
     const string questionFileAddress = argv[1];
     vector<Question*> questions = processQuestionsFile(questionFileAddress);
     vector<Subject*> subjects = processSubjects(questions);
