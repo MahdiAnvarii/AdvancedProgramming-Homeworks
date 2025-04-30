@@ -177,6 +177,15 @@ private:
     bool isAutoTemplate;
 };
 
+void unsetThreeDigits(){
+    cout.unsetf(ios::fixed);
+    cout.precision(6);
+}
+
+double truncationWithThreeDigits(double score){
+    return trunc(score*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+}
+
 class Subject{
 public:
     Subject(string subjectName_, const vector<shared_ptr<Question>>& questions){
@@ -228,11 +237,10 @@ public:
         if (totalOccurrence) score = totalCorrects/totalOccurrence;
     }
     void totalReport(){
-        double scoreWithThreeDigits = trunc(score*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        scoreWithThreeDigits = truncationWithThreeDigits(score);
         cout << subjectName << ": " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " <<
         totalBlank << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
-        cout.unsetf(ios::fixed);
-        cout.precision(6);
+        unsetThreeDigits();
     }
     void reportSubject(){
         for (auto difficulty_ : VALID_DIFFICULTIES){
@@ -241,10 +249,9 @@ public:
             cout << difficultyUpperCased_ << ": " << eachDifficultyCorrects[difficulty_] << " corrects, " << eachDifficultyIncorrects[difficulty_] 
             << " incorrects and " << eachDifficultyBlank[difficulty_] << " blanks." << endl;
         }
-        double scoreWithThreeDigits = trunc(score*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        scoreWithThreeDigits = truncationWithThreeDigits(score);
         cout << endl << "Total score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
-        cout.unsetf(ios::fixed);
-        cout.precision(6);
+        unsetThreeDigits();
     }
     string getSubjectName() const { return subjectName; }
     double getSubjectScore() const { return score; }
@@ -260,6 +267,7 @@ private:
     double totalBlank;
     double totalOccurrence;
     double score;
+    double scoreWithThreeDigits;
     map<string, double> eachDifficultyCorrects;
     map<string, double> eachDifficultyIncorrects;
     map<string, double> eachDifficultyBlank;
@@ -364,27 +372,24 @@ public:
             string subjectName_ = testSubject->getSubjectName();
             if (eachSubjectOccurrence[subjectName_]) eachSubjectScore[subjectName_] = eachSubjectCorrects[subjectName_]/eachSubjectOccurrence[subjectName_];
 
-            double scoreWithThreeDigits = trunc(eachSubjectScore[subjectName_]*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+            double scoreWithThreeDigits = truncationWithThreeDigits(eachSubjectScore[subjectName_]);
             cout << subjectName_ << ": " << eachSubjectCorrects[subjectName_] << " corrects, " << eachSubjectIncorrects[subjectName_] << " incorrects and " <<
             eachSubjectBlank[subjectName_] << " blanks. Score: " << fixed << setprecision(3) << scoreWithThreeDigits << "%." << endl;
-            cout.unsetf(ios::fixed);
-            cout.precision(6);
+            unsetThreeDigits();
         }
         
         if (totalOccurrence) totalScore=totalCorrects/totalOccurrence;
-        double totalScoreWithThreeDigits = trunc(totalScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        totalScoreWithThreeDigits = truncationWithThreeDigits(totalScore);
         cout << endl << "Total results: " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." << endl;
         cout << "Total score: " << fixed << setprecision(3) << totalScoreWithThreeDigits << "%." << endl;
-        cout.unsetf(ios::fixed);
-        cout.precision(6);
+        unsetThreeDigits();
     }
     void reportTests(){
         if (totalOccurrence) totalScore=totalCorrects/totalOccurrence;
-        double totalScoreWithThreeDigits = trunc(totalScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+        totalScoreWithThreeDigits = truncationWithThreeDigits(totalScore);
         cout << testName << ": " << totalCorrects << " corrects, " << totalIncorrects << " incorrects and " << totalBlank << " blanks." 
         << " Score: " << fixed << setprecision(3) << totalScoreWithThreeDigits << "%." << endl;
-        cout.unsetf(ios::fixed);
-        cout.precision(6);
+        unsetThreeDigits();
     }
     string getTestName() const { return testName; }
     time_t getTestTime() const { return timeOfAttendance; }
@@ -402,6 +407,7 @@ private:
     double totalBlank;
     double totalOccurrence;
     double totalScore;
+    double totalScoreWithThreeDigits;
     map<string, double> eachSubjectCorrects;
     map<string, double> eachSubjectIncorrects;
     map<string, double> eachSubjectBlank;
@@ -579,11 +585,10 @@ void reportAll(const vector<shared_ptr<Question>> questions, vector<shared_ptr<S
 
     double allSubjectScore=0.0;
     if (allSubjectsOccurrence) allSubjectScore=allSubjectsCorrects/allSubjectsOccurrence;
-    double allSubjectsScoreWithThreeDigits = trunc(allSubjectScore*PERCENTAGE_FACTOR*TRUNCATION_FACTOR)/TRUNCATION_FACTOR;
+    double allSubjectsScoreWithThreeDigits = truncationWithThreeDigits(allSubjectScore);
     cout << endl << "Total results: " << allSubjectsCorrects << " corrects, " << allSubjectsIncorrects << " incorrects and " << allSubjectsBlank << " blanks." << endl;
     cout << "Total score: " << fixed << setprecision(3) << allSubjectsScoreWithThreeDigits << "%." << endl;
-    cout.unsetf(ios::fixed);
-    cout.precision(6);
+    unsetThreeDigits();
 }
 
 void reportTest(const vector<string>& orderToVector, vector<shared_ptr<Test>>& tests){
@@ -660,7 +665,5 @@ int main(int argc, char* argv[]){
     takeTheOrders(questions, subjects);
     // ToDo List
     // 1. Multifile the program
-    // 2. Change pointers to smart pointers
-    // 3. Reduce redundancy specially in reportings
     // 4. Create a top-level class
 }
