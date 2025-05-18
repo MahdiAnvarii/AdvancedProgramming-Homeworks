@@ -62,7 +62,7 @@ This script is used to compile and run tests for your code, and then compare the
 
 ## Cleaning Up
 
-1. **Remove test outputs and diffs** (if needed) by running:
+   **Remove test outputs and diffs** (if needed) by running:
 
    ```bash
    ./judge.sh -r
@@ -71,5 +71,5 @@ This script is used to compile and run tests for your code, and then compare the
    This will delete any `.result` and `.diff` files generated during the tests.
 
 ## a5 assignment
-Check out [TBD Project](https://github.com/MahdiAnvarii/TBD)
+- Check out [TBD Project](https://github.com/MahdiAnvarii/TBD)
 
