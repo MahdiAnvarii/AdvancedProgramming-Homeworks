@@ -62,7 +62,7 @@ This script is used to compile and run tests for your code, and then compare the
 
 ## Cleaning Up
 
-   **Remove test outputs and diffs** (if needed) by running:
+-  **Remove test outputs and diffs** (if needed) by running:
 
    ```bash
    ./judge.sh -r
